@@ -113,12 +113,17 @@ function draw() {
     }
     pop();
   }
+
+   fill(255);
+  textSize(24);
+  text("Last piece: " + lastPiece, 20, 40);
+  text("Bag: " + bag.join(", "), 20, 80);
 }
 
 function refillBag() {
   bag = ['T', 'Z', 'S', 'L', 'J', 'O', 'I'];
 
-  // shuffle (Fisher-Yates)
+  // shuffle (cred. fisher-yates shuffle algorithm)
   for (let i = bag.length - 1; i > 0; i--) {
     let j = floor(random(i + 1));
     [bag[i], bag[j]] = [bag[j], bag[i]];
@@ -128,6 +133,12 @@ function refillBag() {
 function getNextPiece() {
   if (bag.length === 0) refillBag();
   return bag.pop();
+}
+
+function refillQueue() {
+  while (nextQueue.length < 5) {
+    nextQueue.push(spawnBlock());
+  }
 }
 
 function spawnBlock() {
@@ -211,4 +222,19 @@ const TYPE_INDEX = {
   I: 6
 };
 
+let lastPiece = "";
+
+function keyPressed() {
+  if (key === ' ') {
+    spawnNext();
+  }
+
+  if (key === 'R') {
+    refillBag();
+    nextQueue = [];
+    for (let i = 0; i < 5; i++) {
+      nextQueue.push(spawnBlock());
+    }
+  }
+}
 
