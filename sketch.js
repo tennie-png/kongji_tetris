@@ -8,11 +8,22 @@ const startX = 481.5;
 const startY = 188;
 const cellWidth = gridWidth / gridCols; //26
 const cellHeight = gridHeight / gridRows; //26
+let board = [];
 let bag = [];
-let currentBlock;
 let nextQueue = [];
+let currentBlock;
+let lastDownTapTime = 0;
+let hardDropThreshold = 200;
+let gravityInterval = 500;
+let lastGravityTime = 0;
 let purewhite, white, lightgray, mediumgray, darkgray, black;
 let COLORS;
+let isLocking = false;
+let leftHeld = false;
+let rightHeld = false;
+let downHeld = false;
+let moveTimer = 0;
+let moveDelay = 90; // lower = faster movement
 
 function preload() {
   purewhite = color(255);
@@ -33,9 +44,7 @@ function preload() {
 
 function setup() {
   createCanvas(1200, 850);
-
   refillBag();
-
   currentBlock = spawnBlock();
 
   for (let i = 0; i < 5; i++) {
@@ -51,6 +60,13 @@ function setup() {
     mediumgray,
     purewhite
   ];
+
+  for (let y = 0; y < gridRows; y++) {
+    board[y] = [];
+    for (let x = 0; x < gridCols; x++) {
+      board[y][x] = null;
+    }
+  }
 }
 
 function draw() {
@@ -71,6 +87,26 @@ function draw() {
     for (let x = 0; x < gridCols; x++) {
       let block = new GridBlock(x, y);
       block.draw();
+    }
+  }
+
+  for (let y = 0; y < gridRows; y++) {
+    for (let x = 0; x < gridCols; x++) {
+      let cell = board[y][x];
+
+      if (cell !== null) {
+        let px = startX + x * cellWidth;
+        let py = startY + y * cellHeight;
+
+        fill(COLORS[TYPE_INDEX[cell]]);
+        noStroke();
+        rect(
+          px + gridGap / 2,
+          py + gridGap / 2,
+          cellWidth - gridGap,
+          cellHeight - gridGap
+        );
+      }
     }
   }
 
@@ -97,7 +133,6 @@ function draw() {
     let block = nextQueue[i];
 
     let offsetX = 0;
-    let offsetY = 0;
 
     if (block.type === "O" || block.type === "I") {
       offsetX = -5;
@@ -114,10 +149,13 @@ function draw() {
     pop();
   }
 
-   fill(255);
+  fill(purewhite);
   textSize(24);
   text("Last piece: " + lastPiece, 20, 40);
   text("Bag: " + bag.join(", "), 20, 80);
+
+  applyGravity();
+  arrowmoveTimer();
 }
 
 function refillBag() {
@@ -154,6 +192,175 @@ function spawnNext() {
   currentBlock = nextQueue.shift();
 
   nextQueue.push(spawnBlock());
+}
+
+function canMove(dx) {
+  let testX = currentBlock.x + dx;
+  let blocks = currentBlock.getBlocks();
+
+  for (let b of blocks) {
+    let moveblockX = b.x + dx;
+
+    if (moveblockX < 0 || moveblockX >= gridCols) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function canMoveDown() {
+  let blocks = currentBlock.getBlocks();
+
+  for (let b of blocks) {
+    let newY = b.y + 1;
+    let x = b.x;
+
+    // bottom wall
+    if (newY >= gridRows) return false;
+
+    // collision with locked blocks
+    if (board[newY][x] !== null) return false;
+  }
+
+  return true;
+}
+
+function canRotate() {
+  let oldRot = currentBlock.rot;
+
+  currentBlock.rotate();
+
+  // check collision after rotation
+  if (isColliding(currentBlock)) {
+    currentBlock.rot = oldRot; //
+  }
+}
+
+function isColliding(block) {
+  let pieces = block.getBlocks();
+
+  for (let p of pieces) {
+
+    // 1. X boundaries FIRST (critical fix)
+    if (p.x < 0 || p.x >= gridCols) {
+      return true;
+    }
+
+    // 2. Y boundaries
+    if (p.y < 0 || p.y >= gridRows) {
+      return true;
+    }
+
+    // 3. Now SAFE board check (both x and y valid)
+    if (board[p.y][p.x] !== null) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function lockPiece() {
+  if (isLocking) return; // prevent double lock
+  isLocking = true;
+
+  let blocks = currentBlock.getBlocks();
+
+  for (let b of blocks) {
+    if (b.y >= 0 && b.y < gridRows && b.x >= 0 && b.x < gridCols) {
+      board[b.y][b.x] = currentBlock.type;
+    }
+  }
+
+  lastPiece = currentBlock.type;
+
+  clearLines();
+  spawnNext();
+
+  isLocking = false;
+}
+
+function clearLines() {
+  for (let y = gridRows - 1; y >= 0; y--) {
+
+    let full = true;
+
+    for (let x = 0; x < gridCols; x++) {
+      if (board[y][x] === null) {
+        full = false;
+        break;
+      }
+    }
+
+    // if row is full
+    if (full) {
+
+      // move everything above down
+      for (let row = y; row > 0; row--) {
+        for (let x = 0; x < gridCols; x++) {
+          board[row][x] = board[row - 1][x];
+        }
+      }
+
+      // clear top row
+      for (let x = 0; x < gridCols; x++) {
+        board[0][x] = null;
+      }
+
+      // re-check same row index (important!)
+      y++;
+    }
+  }
+}
+
+function hardDrop() {
+  while (canMoveDown()) {
+    currentBlock.y += 1;
+  }
+
+  lockPiece();
+}
+
+function applyGravity() {
+  let now = millis();
+
+  if (now - lastGravityTime > gravityInterval) {
+
+    if (canMoveDown()) {
+      currentBlock.y += 1;
+    } else {
+      lockPiece(); // spawn happens inside lockPiece now
+    }
+
+    lastGravityTime = now;
+  }
+}
+
+function arrowmoveTimer() {
+  let now = millis();
+
+  if (now - moveTimer > moveDelay) {
+
+    if (leftHeld && canMove(-1)) {
+      currentBlock.x -= 1;
+    }
+
+    if (rightHeld && canMove(1)) {
+      currentBlock.x += 1;
+    }
+
+    // SOFT DROP ONLY
+    if (downHeld) {
+      if (canMoveDown()) {
+        currentBlock.y += 1;
+      } else {
+        lockPiece();
+      }
+    }
+
+    moveTimer = now;
+  }
 }
 
 class GridBlock {
@@ -200,6 +407,10 @@ class TetrisBlock {
       y: b.y + this.y
     }));
   }
+
+  rotate() {
+    this.rot = (this.rot + 1) % 4;
+  }
 }
 
 const SHAPES = {
@@ -225,16 +436,34 @@ const TYPE_INDEX = {
 let lastPiece = "";
 
 function keyPressed() {
-  if (key === ' ') {
-    spawnNext();
+
+  if (keyCode === LEFT_ARROW) leftHeld = true;
+  if (keyCode === RIGHT_ARROW) rightHeld = true;
+if (keyCode === DOWN_ARROW) {
+  let now = millis();
+
+  // double tap → hard drop
+  if (now - lastDownTapTime < hardDropThreshold) {
+    hardDrop();
+    lastDownTapTime = 0;
+    return;
   }
 
-  if (key === 'R') {
-    refillBag();
-    nextQueue = [];
-    for (let i = 0; i < 5; i++) {
-      nextQueue.push(spawnBlock());
+  lastDownTapTime = now;
+  downHeld = true;
+}
+
+  if (keyCode === UP_ARROW) {
+    let oldRot = currentBlock.rot;
+    currentBlock.rotate();
+    if (isColliding(currentBlock)) {
+      currentBlock.rot = oldRot;
     }
   }
 }
 
+function keyReleased() {
+  if (keyCode === LEFT_ARROW) leftHeld = false;
+  if (keyCode === RIGHT_ARROW) rightHeld = false;
+  if (keyCode === DOWN_ARROW) downHeld = false;
+}
