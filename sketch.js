@@ -195,15 +195,17 @@ function spawnNext() {
 }
 
 function canMove(dx) {
-  let testX = currentBlock.x + dx;
   let blocks = currentBlock.getBlocks();
 
   for (let b of blocks) {
-    let moveblockX = b.x + dx;
+    let newX = b.x + dx;
+    let newY = b.y;
 
-    if (moveblockX < 0 || moveblockX >= gridCols) {
-      return false;
-    }
+    // checks for left and right walls
+    if (newX < 0 || newX >= gridCols) return false;
+
+    // checks for placed blocks
+    if (board[newY][newX] !== null) return false;
   }
 
   return true;
@@ -216,10 +218,10 @@ function canMoveDown() {
     let newY = b.y + 1;
     let x = b.x;
 
-    // bottom wall
+    // checks for bottom
     if (newY >= gridRows) return false;
 
-    // collision with locked blocks
+    // checks for placed blocks
     if (board[newY][x] !== null) return false;
   }
 
@@ -231,9 +233,8 @@ function canRotate() {
 
   currentBlock.rotate();
 
-  // check collision after rotation
   if (isColliding(currentBlock)) {
-    currentBlock.rot = oldRot; //
+    currentBlock.rot = oldRot;
   }
 }
 
@@ -242,17 +243,16 @@ function isColliding(block) {
 
   for (let p of pieces) {
 
-    // 1. X boundaries FIRST (critical fix)
+    // checks for x 
     if (p.x < 0 || p.x >= gridCols) {
       return true;
     }
 
-    // 2. Y boundaries
+    // checks for y
     if (p.y < 0 || p.y >= gridRows) {
       return true;
     }
 
-    // 3. Now SAFE board check (both x and y valid)
     if (board[p.y][p.x] !== null) {
       return true;
     }
@@ -262,7 +262,7 @@ function isColliding(block) {
 }
 
 function lockPiece() {
-  if (isLocking) return; // prevent double lock
+  if (isLocking) return;
   isLocking = true;
 
   let blocks = currentBlock.getBlocks();
@@ -293,22 +293,18 @@ function clearLines() {
       }
     }
 
-    // if row is full
     if (full) {
 
-      // move everything above down
       for (let row = y; row > 0; row--) {
         for (let x = 0; x < gridCols; x++) {
           board[row][x] = board[row - 1][x];
         }
       }
 
-      // clear top row
       for (let x = 0; x < gridCols; x++) {
         board[0][x] = null;
       }
 
-      // re-check same row index (important!)
       y++;
     }
   }
@@ -350,7 +346,7 @@ function arrowmoveTimer() {
       currentBlock.x += 1;
     }
 
-    // SOFT DROP ONLY
+    // soft drop
     if (downHeld) {
       if (canMoveDown()) {
         currentBlock.y += 1;
@@ -442,7 +438,7 @@ function keyPressed() {
 if (keyCode === DOWN_ARROW) {
   let now = millis();
 
-  // double tap → hard drop
+  // checks double tap for hard drop
   if (now - lastDownTapTime < hardDropThreshold) {
     hardDrop();
     lastDownTapTime = 0;
