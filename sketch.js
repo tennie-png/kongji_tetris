@@ -513,7 +513,7 @@ function keyPressed() {
     downHeld = true;
   }
 
-  if (key === 'r' || key === 'R') {
+  if (keyCode === UP_ARROW) {
     let oldRot = currentBlock.rot;
     currentBlock.rotate();
     if (isColliding(currentBlock)) {
@@ -521,7 +521,7 @@ function keyPressed() {
     }
   }
 
-  if (key === 'c' || key === 'C') {
+  if (key === ' ') {
     holdPiece();
   }
 }
