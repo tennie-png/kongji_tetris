@@ -8,22 +8,30 @@ const startX = 481.5;
 const startY = 188;
 const cellWidth = gridWidth / gridCols; //26
 const cellHeight = gridHeight / gridRows; //26
+//game board and bag array
 let board = [];
 let bag = [];
 let nextQueue = [];
+let lastPiece = "";
 let currentBlock;
-let lastDownTapTime = 0;
-let hardDropThreshold = 200;
-let gravityInterval = 500;
-let lastGravityTime = 0;
-let purewhite, white, lightgray, mediumgray, darkgray, black;
-let COLORS;
+//movement timers
+let hardDropTap = 0;
+let hardDropTimer = 200;
+let gravityInterval = 700;
+let gravityTime = 0;
 let isLocking = false;
 let leftHeld = false;
 let rightHeld = false;
 let downHeld = false;
 let moveTimer = 0;
-let moveDelay = 90; // lower = faster movement
+let moveDelay = 70;
+//held
+let heldPiece = null;
+let canHold = true;
+//tetris block colors
+let purewhite, white, lightgray, mediumgray, darkgray, black;
+let COLORS;
+
 
 function preload() {
   purewhite = color(255);
@@ -46,7 +54,7 @@ function setup() {
   createCanvas(1200, 850);
   refillBag();
   currentBlock = spawnBlock();
-
+  //shows next queue blocks
   for (let i = 0; i < 5; i++) {
     nextQueue.push(spawnBlock());
   }
@@ -60,7 +68,7 @@ function setup() {
     mediumgray,
     purewhite
   ];
-
+  //creates the grid board (for the blocks)
   for (let y = 0; y < gridRows; y++) {
     board[y] = [];
     for (let x = 0; x < gridCols; x++) {
@@ -82,7 +90,7 @@ function draw() {
   image(gameui, 465, 166, 304, 600);
   image(logo, 521, 55, 195, 95);
 
-  //grid
+  //creates the grid board (for display)
   for (let y = 0; y < gridRows; y++) {
     for (let x = 0; x < gridCols; x++) {
       let block = new GridBlock(x, y);
@@ -90,6 +98,7 @@ function draw() {
     }
   }
 
+  //checks for null cells in the grid
   for (let y = 0; y < gridRows; y++) {
     for (let x = 0; x < gridCols; x++) {
       let cell = board[y][x];
@@ -110,7 +119,7 @@ function draw() {
     }
   }
 
-  //block spawn
+  //draws falling block
   for (let b of currentBlock.getBlocks()) {
     let px = startX + b.x * cellWidth;
     let py = startY + b.y * cellHeight;
@@ -125,7 +134,7 @@ function draw() {
     );
   }
 
-  //next block window
+  //changes the next queue blocks
   let previewX = 765;
   let previewY = 190;
 
@@ -149,11 +158,40 @@ function draw() {
     pop();
   }
 
-  fill(purewhite);
-  textSize(24);
-  text("Last piece: " + lastPiece, 20, 40);
-  text("Bag: " + bag.join(", "), 20, 80);
+  // held piece window
+  if (heldPiece !== null) {
 
+    let heldBlock = new TetrisBlock(0, 0, 0, heldPiece);
+
+    let holdX = 408;
+    let holdY = 200;
+
+    let offsetX = 0;
+
+    if (heldPiece === "O" || heldPiece === "I") {
+      offsetX = -5;
+    }
+
+    push();
+    translate(holdX + offsetX, holdY);
+
+    for (let b of heldBlock.getBlocks()) {
+
+      fill(COLORS[TYPE_INDEX[heldPiece]]);
+      noStroke();
+
+      rect(
+        b.x * 10,
+        b.y * 10,
+        10,
+        10
+      );
+    }
+
+    pop();
+  }
+
+  //gravity and held arrow key detection
   applyGravity();
   arrowmoveTimer();
 }
@@ -168,7 +206,7 @@ function refillBag() {
   }
 }
 
-function getNextPiece() {
+function getNextBlock() {
   if (bag.length === 0) refillBag();
   return bag.pop();
 }
@@ -184,7 +222,7 @@ function spawnBlock() {
     4,
     0,
     0,
-    getNextPiece()
+    getNextBlock()
   );
 }
 
@@ -278,7 +316,36 @@ function lockPiece() {
   clearLines();
   spawnNext();
 
+  canHold = true;
+
   isLocking = false;
+}
+
+function holdPiece() {
+
+  if (!canHold) return;
+
+  if (heldPiece === null) {
+
+    heldPiece = currentBlock.type;
+
+    currentBlock = nextQueue.shift();
+    nextQueue.push(spawnBlock());
+
+  } else {
+
+    let temp = heldPiece;
+    heldPiece = currentBlock.type;
+
+    currentBlock = new TetrisBlock(
+      4,
+      0,
+      0,
+      temp
+    );
+  }
+
+  canHold = false;
 }
 
 function clearLines() {
@@ -321,15 +388,15 @@ function hardDrop() {
 function applyGravity() {
   let now = millis();
 
-  if (now - lastGravityTime > gravityInterval) {
+  if (now - gravityTime > gravityInterval) {
 
     if (canMoveDown()) {
       currentBlock.y += 1;
     } else {
-      lockPiece(); // spawn happens inside lockPiece now
+      lockPiece();
     }
 
-    lastGravityTime = now;
+    gravityTime = now;
   }
 }
 
@@ -429,32 +496,34 @@ const TYPE_INDEX = {
   I: 6
 };
 
-let lastPiece = "";
-
 function keyPressed() {
 
   if (keyCode === LEFT_ARROW) leftHeld = true;
   if (keyCode === RIGHT_ARROW) rightHeld = true;
-if (keyCode === DOWN_ARROW) {
-  let now = millis();
+  if (keyCode === DOWN_ARROW) {
+    let now = millis();
 
-  // checks double tap for hard drop
-  if (now - lastDownTapTime < hardDropThreshold) {
-    hardDrop();
-    lastDownTapTime = 0;
-    return;
+    // checks double tap for hard drop
+    if (now - hardDropTap < hardDropTimer) {
+      hardDrop();
+      hardDropTap = 0;
+      return;
+    }
+
+    hardDropTap = now;
+    downHeld = true;
   }
 
-  lastDownTapTime = now;
-  downHeld = true;
-}
-
-  if (keyCode === UP_ARROW) {
+  if (key === 'r' || key === 'R') {
     let oldRot = currentBlock.rot;
     currentBlock.rotate();
     if (isColliding(currentBlock)) {
       currentBlock.rot = oldRot;
     }
+  }
+
+  if (key === 'c' || key === 'C') {
+    holdPiece();
   }
 }
 
