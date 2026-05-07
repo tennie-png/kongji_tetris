@@ -25,7 +25,6 @@ let rightHeld = false;
 let downHeld = false;
 let moveTimer = 0;
 let moveDelay = 70;
-//held
 let heldPiece = null;
 let canHold = true;
 //tetris block colors
@@ -80,8 +79,8 @@ function setup() {
 function draw() {
 
   //ui
-  background(darkgray);
-  image(testingui, 0, 0, 1200, 850);
+  background(black);
+  //image(testingui, 0, 0, 1200, 850);
   image(rectframe, 236, 0, 729, 850);
   image(bigchinese, 385, 335, 73, 433);
   image(heldui, 381, 165, 75, 117);
