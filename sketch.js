@@ -1,3 +1,10 @@
+//    _                      _ _ 
+//   | | _____  _ __   __ _ (_|_)
+//   | |/ / _ \| '_ \ / _` || | |
+//   |   < (_) | | | | (_| || | |
+//   |_|\_\___/|_| |_|\__, |/ |_|
+//                    |___/__/   
+
 //grid structure
 const gridCols = 10;
 const gridRows = 20;
@@ -13,7 +20,14 @@ let board = [];
 let bag = [];
 let nextQueue = [];
 let lastPiece = "";
+let heldPiece = null;
+let canHold = true;
 let currentBlock;
+//game stats
+let score = 0;
+let combo = 0;
+let level = 1;
+let linesCleared = 0;
 //movement timers
 let hardDropTap = 0;
 let hardDropTimer = 200;
@@ -25,8 +39,6 @@ let rightHeld = false;
 let downHeld = false;
 let moveTimer = 0;
 let moveDelay = 70;
-let heldPiece = null;
-let canHold = true;
 //tetris block colors
 let purewhite, white, lightgray, mediumgray, darkgray, black;
 let COLORS;
@@ -47,6 +59,7 @@ function preload() {
   levelui = loadImage("assets/levelui.png");
   gameui = loadImage("assets/gameui.png");
   logo = loadImage("assets/kongji.png");
+  angelicwar = loadFont("assets/titlefont.ttf");
 }
 
 function setup() {
@@ -88,6 +101,17 @@ function draw() {
   image(levelui, 777, 458, 75, 91);
   image(gameui, 465, 166, 304, 600);
   image(logo, 521, 55, 195, 95);
+  //stats
+  textAlign(CENTER);
+  textFont(angelicwar);
+  fill(darkgray);
+  textSize(32);
+  text(level, 810, 505);
+  push();
+  textSize(18);
+  fill(white);
+  text(score, 612, 741);
+  pop();
 
   //creates the grid board (for display)
   for (let y = 0; y < gridRows; y++) {
@@ -116,6 +140,52 @@ function draw() {
         );
       }
     }
+  }
+
+  // ghost piece
+  let ghostY = currentBlock.y;
+
+  // find lowest valid position
+  while (true) {
+
+    let testBlock = new TetrisBlock(
+      currentBlock.x,
+      ghostY + 1,
+      currentBlock.rot,
+      currentBlock.type
+    );
+
+    if (isColliding(testBlock)) {
+      break;
+    }
+
+    ghostY++;
+  }
+
+  // draw ghost
+  let ghostBlock = new TetrisBlock(
+    currentBlock.x,
+    ghostY,
+    currentBlock.rot,
+    currentBlock.type
+  );
+
+  for (let b of ghostBlock.getBlocks()) {
+
+    let px = startX + b.x * cellWidth;
+    let py = startY + b.y * cellHeight;
+
+    push();
+    fill(139,139,139,100);
+    noStroke();
+
+    rect(
+      px + gridGap / 2,
+      py + gridGap / 2,
+      cellWidth - gridGap,
+      cellHeight - gridGap
+    );
+    pop();
   }
 
   //draws falling block
@@ -189,8 +259,6 @@ function draw() {
 
     pop();
   }
-
-  //gravity and held arrow key detection
   applyGravity();
   arrowmoveTimer();
 }
@@ -348,6 +416,8 @@ function holdPiece() {
 }
 
 function clearLines() {
+  let cleared = 0;
+
   for (let y = gridRows - 1; y >= 0; y--) {
 
     let full = true;
@@ -360,7 +430,7 @@ function clearLines() {
     }
 
     if (full) {
-
+      cleared++;
       for (let row = y; row > 0; row--) {
         for (let x = 0; x < gridCols; x++) {
           board[row][x] = board[row - 1][x];
@@ -374,6 +444,29 @@ function clearLines() {
       y++;
     }
   }
+
+  if (cleared > 0) {
+    combo++;
+
+    let points = 0;
+
+    if (cleared === 1) points += 100;
+    if (cleared === 2) points += 300;
+    if (cleared === 3) points += 700;
+    if (cleared >= 4) points += 1500;
+
+    let comboMultiplier = combo * 50;
+
+    score += points + comboMultiplier;
+  } else {
+    combo = 0;
+  }
+
+  linesCleared += cleared;
+
+  level = floor(score / 1000) + 1;
+
+  gravityInterval = max(100, 700 - level * 40);
 }
 
 function hardDrop() {
@@ -513,7 +606,7 @@ function keyPressed() {
     downHeld = true;
   }
 
-  if (keyCode === UP_ARROW) {
+  if (key === 'r' || key === 'R') {
     let oldRot = currentBlock.rot;
     currentBlock.rotate();
     if (isColliding(currentBlock)) {
@@ -521,7 +614,7 @@ function keyPressed() {
     }
   }
 
-  if (key === ' ') {
+  if (key === 'c' || key === 'C') {
     holdPiece();
   }
 }
