@@ -39,6 +39,8 @@ let rightHeld = false;
 let downHeld = false;
 let moveTimer = 0;
 let moveDelay = 70;
+let lockTimer = 0;
+let lockDelay = 80;
 //game states
 let startScreen = true;
 let playScreen = false;
@@ -660,9 +662,24 @@ function applyGravity() {
   if (now - gravityTime > gravityInterval) {
 
     if (canMoveDown()) {
+
       currentBlock.y += 1;
+
+      // reset lock timer if piece can still fall
+      lockTimer = 0;
+
     } else {
-      lockPiece();
+
+      // first frame touching ground
+      if (lockTimer === 0) {
+        lockTimer = now;
+      }
+
+      // lock after delay
+      if (now - lockTimer > lockDelay) {
+        lockPiece();
+        lockTimer = 0;
+      }
     }
 
     gravityTime = now;
@@ -718,8 +735,22 @@ if (gameOver) {
   return;
 }
 
-  if (keyCode === LEFT_ARROW) leftHeld = true;
-  if (keyCode === RIGHT_ARROW) rightHeld = true;
+if (keyCode === LEFT_ARROW) {
+  leftHeld = true;
+
+  if (!canMoveDown()) {
+    lockTimer = millis();
+  }
+}
+
+if (keyCode === RIGHT_ARROW) {
+  rightHeld = true;
+
+  if (!canMoveDown()) {
+    lockTimer = millis();
+  }
+}
+
   if (keyCode === DOWN_ARROW) {
     let now = millis();
 
@@ -735,15 +766,24 @@ if (gameOver) {
   }
 
 if (keyCode === UP_ARROW) {
-    let oldRot = currentBlock.rot;
-    currentBlock.rotate();
-    if (isColliding(currentBlock)) {
-      currentBlock.rot = oldRot;
-    } else {
-          rotatesound.setVolume(.1);
-          rotatesound.play();
+
+  let oldRot = currentBlock.rot;
+
+  currentBlock.rotate();
+
+  if (isColliding(currentBlock)) {
+    currentBlock.rot = oldRot;
+
+  } else {
+
+    rotatesound.play();
+
+    // reset lock delay after successful rotate
+    if (!canMoveDown()) {
+      lockTimer = millis();
     }
   }
+}
 
 if (key === ' ') {
   if (canHold) {
