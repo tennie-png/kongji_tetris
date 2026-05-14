@@ -714,27 +714,6 @@ function arrowmoveTimer() {
 
 function keyPressed() {
 
-if (startScreen) {
-  if (keyCode === ENTER) {
-    startScreen = false;
-    playScreen = true;
-  }
-
-  return;
-}
-
-if (gameOver) {
-  if (keyCode === ENTER) {
-
-    resetGame();
-
-    gameOver = false;
-    playScreen = true;
-  }
-
-  return;
-}
-
 if (keyCode === LEFT_ARROW) {
   leftHeld = true;
 
@@ -792,6 +771,26 @@ if (key === ' ') {
     holdsound.play();
   }
 }
+}
+
+function mousePressed() {
+  
+  if (startScreen) {
+    startScreen = false;
+    playScreen = true;
+  }
+
+  return;
+
+if (gameOver) {
+
+    resetGame();
+
+    gameOver = false;
+    playScreen = true;
+  }
+
+  return;
 }
 
 function keyReleased() {
