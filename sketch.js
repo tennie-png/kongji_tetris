@@ -775,7 +775,7 @@ if (keyCode === UP_ARROW) {
     currentBlock.rot = oldRot;
 
   } else {
-
+    rotatesound.setVolume(0.1);
     rotatesound.play();
 
     // reset lock delay after successful rotate
