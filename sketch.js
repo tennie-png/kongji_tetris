@@ -39,10 +39,83 @@ let rightHeld = false;
 let downHeld = false;
 let moveTimer = 0;
 let moveDelay = 70;
+//game states
+let startScreen = true;
+let playScreen = false;
+let gameOver = false;
 //tetris block colors
 let purewhite, white, lightgray, mediumgray, darkgray, black;
 let COLORS;
 
+class GridBlock {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+  }
+
+  draw() {
+    let px = startX + this.x * cellWidth;
+    let py = startY + this.y * cellHeight;
+    push();
+    fill(0, 0, 0, 25);
+    noStroke();
+    rect(
+      px + gridGap / 2,
+      py + gridGap / 2,
+      cellWidth - gridGap,
+      cellHeight - gridGap
+    );
+    pop();
+  }
+}
+
+class TetrisBlock {
+  constructor(x, y, rot, type) {
+    this.x = x;
+    this.y = y;
+    this.rot = rot;
+    this.type = type;
+  }
+
+  getBlocks() {
+    let blocks = SHAPES[this.type];
+
+    let rot = ((this.rot % 4) + 4) % 4;
+
+    for (let r = 0; r < rot; r++) {
+      blocks = blocks.map(b => ({ x: -b.y, y: b.x }));
+    }
+
+    return blocks.map(b => ({
+      x: b.x + this.x,
+      y: b.y + this.y
+    }));
+  }
+
+  rotate() {
+    this.rot = (this.rot + 1) % 4;
+  }
+}
+
+const SHAPES = {
+  T: [{ x: -1, y: 0 }, { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }],
+  Z: [{ x: -1, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }],
+  S: [{ x: -1, y: 1 }, { x: 0, y: 1 }, { x: 0, y: 0 }, { x: 1, y: 0 }],
+  L: [{ x: -1, y: 0 }, { x: 0, y: 0 }, { x: 1, y: 0 }, { x: -1, y: 1 }],
+  J: [{ x: -1, y: 0 }, { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }],
+  O: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }],
+  I: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }, { x: -1, y: 0 }]
+};
+
+const TYPE_INDEX = {
+  T: 0,
+  Z: 1,
+  S: 2,
+  L: 3,
+  J: 4,
+  O: 5,
+  I: 6
+};
 
 function preload() {
   purewhite = color(255);
@@ -51,6 +124,10 @@ function preload() {
   mediumgray = color(95);
   darkgray = color(39);
   black = color(0);
+  startingscreen = loadImage("assets/startscreen.png");
+  startframe = loadImage("assets/startframe.png");
+  controlui = loadImage("assets/controlui.png");
+  overui = loadImage("assets/overui.png");
   rectframe = loadImage("assets/frame.png");
   bigchinese = loadImage("assets/bigchinese.png");
   testingui = loadImage("assets/test.png");
@@ -60,6 +137,12 @@ function preload() {
   gameui = loadImage("assets/gameui.png");
   logo = loadImage("assets/kongji.png");
   angelicwar = loadFont("assets/titlefont.ttf");
+  mleh = loadFont("assets/textfont.ttf");
+  regularclear = loadSound("assets/regularclear.mp3");
+  tetrisclear = loadSound("assets/tetrisclear.mp3");
+  piecedropped = loadSound("assets/drop.mp3");
+  rotatesound = loadSound("assets/rotate.mp3");
+  holdsound = loadSound("assets/hold.mp3");
 }
 
 function setup() {
@@ -90,7 +173,31 @@ function setup() {
 }
 
 function draw() {
+  
+  if (startScreen) {
+    startGame();
+  }
 
+  if (playScreen) {
+  playGame();
+  }
+
+  if (gameOver) {
+    gameOverUi();
+  }
+}
+
+function startGame() {
+  background(black);
+  image(startingscreen, 236, 0, 729, 850);
+  image(startframe, 236, 0, 729, 850);
+  image(controlui, 402, 340, 410, 294);
+  image(logo, 531, 265, 148, 70);
+  push();
+}
+
+function playGame() {
+  
   //ui
   background(black);
   //image(testingui, 0, 0, 1200, 850);
@@ -259,8 +366,62 @@ function draw() {
 
     pop();
   }
+
+if (!gameOver) {
   applyGravity();
   arrowmoveTimer();
+}
+}
+
+function gameOverUi() {
+  fill(0, 0, 0, 100);
+  rect(236, 0, 729, 850);
+  image(overui, 410, 330, 410, 294);
+  textAlign(CENTER);
+  textFont(angelicwar);
+  fill(darkgray);
+  textSize(32);
+  text(score, 526, 490);
+  text(level, 696, 490);
+}
+
+function resetGame() {
+
+  board = [];
+
+  for (let y = 0; y < gridRows; y++) {
+    board[y] = [];
+
+    for (let x = 0; x < gridCols; x++) {
+      board[y][x] = null;
+    }
+  }
+
+  score = 0;
+  combo = 0;
+  level = 1;
+  linesCleared = 0;
+
+  gravityInterval = 700;
+  gravityTime = millis();
+
+  leftHeld = false;
+  rightHeld = false;
+  downHeld = false;
+
+  heldPiece = null;
+  canHold = true;
+
+  bag = [];
+  nextQueue = [];
+
+  refillBag();
+
+  currentBlock = spawnBlock();
+
+  for (let i = 0; i < 5; i++) {
+    nextQueue.push(spawnBlock());
+  }
 }
 
 function refillBag() {
@@ -297,6 +458,10 @@ function spawnNext() {
   currentBlock = nextQueue.shift();
 
   nextQueue.push(spawnBlock());
+
+  if (isColliding(currentBlock)) {
+    gameOver = true;
+  }
 }
 
 function canMove(dx) {
@@ -386,6 +551,8 @@ function lockPiece() {
   canHold = true;
 
   isLocking = false;
+
+  piecedropped.play();
 }
 
 function holdPiece() {
@@ -462,6 +629,12 @@ function clearLines() {
     combo = 0;
   }
 
+  if (cleared >= 4) {
+    tetrisclear.play();
+  } else if (cleared > 0) {
+    regularclear.play();
+  }
+
   linesCleared += cleared;
 
   level = floor(score / 1000) + 1;
@@ -518,77 +691,28 @@ function arrowmoveTimer() {
   }
 }
 
-class GridBlock {
-  constructor(x, y) {
-    this.x = x;
-    this.y = y;
-  }
-
-  draw() {
-    let px = startX + this.x * cellWidth;
-    let py = startY + this.y * cellHeight;
-    push();
-    fill(0, 0, 0, 25);
-    noStroke();
-    rect(
-      px + gridGap / 2,
-      py + gridGap / 2,
-      cellWidth - gridGap,
-      cellHeight - gridGap
-    );
-    pop();
-  }
-}
-
-class TetrisBlock {
-  constructor(x, y, rot, type) {
-    this.x = x;
-    this.y = y;
-    this.rot = rot;
-    this.type = type;
-  }
-
-  getBlocks() {
-    let blocks = SHAPES[this.type];
-
-    let rot = ((this.rot % 4) + 4) % 4;
-
-    for (let r = 0; r < rot; r++) {
-      blocks = blocks.map(b => ({ x: -b.y, y: b.x }));
-    }
-
-    return blocks.map(b => ({
-      x: b.x + this.x,
-      y: b.y + this.y
-    }));
-  }
-
-  rotate() {
-    this.rot = (this.rot + 1) % 4;
-  }
-}
-
-const SHAPES = {
-  T: [{ x: -1, y: 0 }, { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }],
-  Z: [{ x: -1, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }],
-  S: [{ x: -1, y: 1 }, { x: 0, y: 1 }, { x: 0, y: 0 }, { x: 1, y: 0 }],
-  L: [{ x: -1, y: 0 }, { x: 0, y: 0 }, { x: 1, y: 0 }, { x: -1, y: 1 }],
-  J: [{ x: -1, y: 0 }, { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }],
-  O: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }],
-  I: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }, { x: -1, y: 0 }]
-};
-
-const TYPE_INDEX = {
-  T: 0,
-  Z: 1,
-  S: 2,
-  L: 3,
-  J: 4,
-  O: 5,
-  I: 6
-};
-
 function keyPressed() {
+
+if (startScreen) {
+  if (keyCode === ENTER) {
+    startScreen = false;
+    playScreen = true;
+  }
+
+  return;
+}
+
+if (gameOver) {
+  if (keyCode === ENTER) {
+
+    resetGame();
+
+    gameOver = false;
+    playScreen = true;
+  }
+
+  return;
+}
 
   if (keyCode === LEFT_ARROW) leftHeld = true;
   if (keyCode === RIGHT_ARROW) rightHeld = true;
@@ -606,17 +730,22 @@ function keyPressed() {
     downHeld = true;
   }
 
-  if (key === 'r' || key === 'R') {
+if (keyCode === UP_ARROW) {
     let oldRot = currentBlock.rot;
     currentBlock.rotate();
     if (isColliding(currentBlock)) {
       currentBlock.rot = oldRot;
+    } else {
+          rotatesound.play();
     }
   }
 
-  if (key === 'c' || key === 'C') {
+if (key === ' ') {
+  if (canHold) {
     holdPiece();
+    holdsound.play();
   }
+}
 }
 
 function keyReleased() {
