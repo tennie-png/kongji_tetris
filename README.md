@@ -2,6 +2,6 @@
 
 art259 final project
 
-![Project Logo](assets/readme.png)
+by tennie, lis, marek
 
-the dreaded mechanical hearts tech
+![game ui](assets/readmee.png)
