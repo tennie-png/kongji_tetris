@@ -31,14 +31,14 @@ let linesCleared = 0;
 //movement timers
 let hardDropTap = 0;
 let hardDropTimer = 200;
-let gravityInterval = 700;
+let gravityInterval = 1000;
 let gravityTime = 0;
 let isLocking = false;
 let leftHeld = false;
 let rightHeld = false;
 let downHeld = false;
 let moveTimer = 0;
-let moveDelay = 70;
+let moveDelay = 150;
 let lockTimer = 0;
 let lockDelay = 80;
 //game states
@@ -780,12 +780,9 @@ function mousePressed() {
     playScreen = true;
   }
 
-  return;
-
 if (gameOver) {
 
     resetGame();
-
     gameOver = false;
     playScreen = true;
   }
