@@ -117,6 +117,7 @@ const TYPE_INDEX = {
   I: 6
 };
 
+
 function preload() {
   purewhite = color(255);
   white = color(217);
@@ -552,6 +553,7 @@ function lockPiece() {
 
   isLocking = false;
 
+  piecedropped.setVolume(.1);
   piecedropped.play();
 }
 
@@ -630,8 +632,10 @@ function clearLines() {
   }
 
   if (cleared >= 4) {
+    tetrisclear.setVolume(0.1);
     tetrisclear.play();
   } else if (cleared > 0) {
+    regularclear.setVolume(0.1);
     regularclear.play();
   }
 
@@ -736,6 +740,7 @@ if (keyCode === UP_ARROW) {
     if (isColliding(currentBlock)) {
       currentBlock.rot = oldRot;
     } else {
+          rotatesound.setVolume(.1);
           rotatesound.play();
     }
   }
@@ -743,6 +748,7 @@ if (keyCode === UP_ARROW) {
 if (key === ' ') {
   if (canHold) {
     holdPiece();
+    holdsound.setVolume(0.1);
     holdsound.play();
   }
 }
