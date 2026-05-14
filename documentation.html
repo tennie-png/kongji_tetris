@@ -5,7 +5,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>Sketch</title>
+  <title>空積 : kongji</title>
 
   <link rel="stylesheet" type="text/css" href="style.css">
 
@@ -109,17 +109,61 @@
       <figcaption>final mockup of game ui</figcaption>
     </figure>
   </div>
-    <div>
+  <div>
     <h4>软件: software</h4>
-        <p>for loops are used to create the grid system<br>
-        and </p>
+    <p><u>for loops</u> are used to create the grid system and <u>2D<br>
+        arrays</u> are used to make the grid functional.</p>
     <figure>
-      <img class="bleh" src="documentation/moodboard.png">
-      <figcaption>aesthetic and inspiration images</figcaption>
+      <img class="bleh" src="documentation/software1.png">
+      <figcaption>grid display and functionality</figcaption>
+    </figure>
+    <p><u>arrays</u> are used to store the randomized bag of pieces.<br>
+      constants are used to define each tetris piece and it's<br>
+      coordinates. <u>classes</u> are made for each tetris block as well.</p>
+    <figure>
+      <img class="bleh" src="documentation/software2.png">
+      <figcaption>tetris pieces using oop, constants, and arrays</figcaption>
+    </figure>
+    <p>point system that increases based on lines cleared and<br>
+      how many lines you've cleared in succession (combo). this<br>
+      also affects the level and gravity.</p>
+    <p><u>floor()</u> is a p5 function that rounds down to the nearest<br>
+      integer. this is useful so we don't have any decimal points.</p>
+    <figure>
+      <img class="bleh" src="documentation/software3.png">
+      <figcaption>point and combo system affecting level and gravity</figcaption>
+    </figure>
+    <p>custom function to check for collision for blocks. if it <br>
+      detects a collision, the <u>return</u> function makes it so that the<br>
+      remaining code does not run.</p>
+    <figure>
+      <img class="bleh" src="documentation/software6.png">
+      <img class="bleh" src="documentation/software4.png">
+      <img class="bleh" src="documentation/software5.png">
+      <figcaption>collision checks for game over and rotating</figcaption>
     </figure>
   </div>
   <div>
     <h4>硬件: hardware</h4>
+    <figure>
+      <img class="bleh" src="documentation/hardware1.jpg">
+      <figcaption>first button layout using clay</figcaption>
+    </figure>
+    <p>we decided to change the up arrow into the logo (to start <br>
+      the game) and move the hold/rotate buttons to the top.</p>
+    <figure>
+      <img class="bleh" src="documentation/hardware2.jpg">
+      <img class="bleh" src="documentation/hardware3.jpg">
+      <figcaption>second sketch and prototype</figcaption>
+    </figure>
+    <p>lis created sturdier buttons by wrapping the foil around<br>
+       cardboard. extra details were cut out and glued on.</p>
+    <figure>
+      <img class="bleh" src="documentation/hardware4.jpg">
+      <img class="bleh" src="documentation/hardware5.jpg">
+      <img class="bleh" src="documentation/hardware6.jpg">
+      <figcaption>final gamepad with a special guest! meow~</figcaption>
+    </figure>
   </div>
   <div>
     <h4>参考: credits</h4>
@@ -140,8 +184,6 @@
     <p>designed using <u>figma</u> and created using <u>p5.js</u>.</p>
     <p>vectors are from <u>adobe stock</u> and are for personal use only. </p>
   </div>
-
-
 </body>
 
 </html>
